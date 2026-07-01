@@ -64,18 +64,22 @@ class EventBus:
         self._tap_callbacks.append(callback)
 
     async def request(self, msg: AgentMessage, timeout: float = 30.0) -> AgentMessage:
-        """请求-响应模式：发一条 request，挂起等待 reply_to=msg_id 的 response"""
+        """请求-响应模式：发一条 request，挂起等待 reply_to=msg_id 的 response。
+
+        注意：响应会投递到原请求发送方（msg.from_agent）的队列，因此这里订阅
+        的是 from_agent 对应的队列，而不是 to_agent。
+        """
         future: asyncio.Future = asyncio.get_event_loop().create_future()
 
         def _waiter():
             async def _inner():
                 while True:
-                    m = await self.subscribe(msg.to_agent)
+                    m = await self.subscribe(msg.from_agent)
                     if m.type == MsgType.RESPONSE and m.reply_to == msg.msg_id:
                         future.set_result(m)
                         return
                     # 不是自己等的，放回队列尾部
-                    await self._get_or_create_queue(msg.to_agent).put(m)
+                    await self._get_or_create_queue(msg.from_agent).put(m)
                     if future.done():
                         return
             asyncio.create_task(_inner())

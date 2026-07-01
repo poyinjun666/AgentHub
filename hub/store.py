@@ -171,7 +171,7 @@ class Store:
                    action="update_artifact",
                    detail={"artifact_ref": artifact_ref, "self_report": self_report})
 
-    def save_review(self, task_id: str, review_result: dict, actor: str = "hub"):
+    def save_review(self, task_id: str, review_result: dict, actor: str = "qa"):
         task = self.get_task(task_id)
         with self._cursor() as cur:
             cur.execute("""

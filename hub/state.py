@@ -1,38 +1,47 @@
 """
 任务状态机 - 强制合法转换，非法跳转直接拒绝并审计
 状态流转：
-    created → submitted → checking ─┬→ done       (通过)
-                                   ├→ reworking  (打回)
-                                   └→ blocked    (升级人工)
+    created → submitted → checking → qa_reviewing ─┬→ qa_approved → done       (通过)
+                                                   ├→ qa_rejected → reworking  (打回)
+                                                   └→ qa_blocked → blocked    (升级人工)
     reworking → submitted (循环，受 max_retries 限制)
     blocked   → submitted | cancelled
 """
 
 
 class TaskState:
-    CREATED     = "created"
-    SUBMITTED   = "submitted"
-    CHECKING    = "checking"
-    DONE        = "done"
-    REWORKING   = "reworking"
-    BLOCKED     = "blocked"
-    CANCELLED   = "cancelled"
-    FAILED      = "failed"
+    CREATED        = "created"
+    SUBMITTED      = "submitted"
+    CHECKING       = "checking"
+    QA_REVIEWING   = "qa_reviewing"
+    QA_APPROVED    = "qa_approved"
+    QA_REJECTED    = "qa_rejected"
+    QA_BLOCKED     = "qa_blocked"
+    REWORKING      = "reworking"
+    DONE           = "done"
+    BLOCKED        = "blocked"
+    CANCELLED      = "cancelled"
+    FAILED         = "failed"
+    TERMINAL_STATES = {DONE, FAILED, CANCELLED, BLOCKED}
 
 
 # 合法转换白名单
 _VALID_TRANSITIONS = {
-    TaskState.CREATED:     {TaskState.SUBMITTED},
-    TaskState.SUBMITTED:   {TaskState.CHECKING, TaskState.CANCELLED},
-    TaskState.CHECKING:    {TaskState.DONE, TaskState.REWORKING, TaskState.BLOCKED, TaskState.FAILED},
-    TaskState.REWORKING:   {TaskState.SUBMITTED, TaskState.CANCELLED},
-    TaskState.BLOCKED:     {TaskState.SUBMITTED, TaskState.CANCELLED},
-    TaskState.DONE:        set(),       # 终态
-    TaskState.FAILED:      set(),       # 终态
-    TaskState.CANCELLED:   set(),       # 终态
+    TaskState.CREATED:        {TaskState.SUBMITTED},
+    TaskState.SUBMITTED:      {TaskState.CHECKING, TaskState.DONE, TaskState.BLOCKED, TaskState.CANCELLED},
+    TaskState.CHECKING:       {TaskState.QA_REVIEWING, TaskState.DONE, TaskState.CANCELLED},
+    TaskState.QA_REVIEWING:   {TaskState.QA_APPROVED, TaskState.QA_REJECTED, TaskState.QA_BLOCKED, TaskState.CANCELLED},
+    TaskState.QA_APPROVED:    {TaskState.DONE, TaskState.CANCELLED},
+    TaskState.QA_REJECTED:    {TaskState.REWORKING, TaskState.CANCELLED},
+    TaskState.QA_BLOCKED:     {TaskState.BLOCKED, TaskState.CANCELLED},
+    TaskState.REWORKING:      {TaskState.SUBMITTED, TaskState.CANCELLED},
+    TaskState.BLOCKED:        {TaskState.SUBMITTED, TaskState.CANCELLED},
+    TaskState.DONE:           set(),       # 终态
+    TaskState.FAILED:         set(),       # 终态
+    TaskState.CANCELLED:      set(),       # 终态
 }
 
-TERMINAL_STATES = {TaskState.DONE, TaskState.FAILED, TaskState.CANCELLED}
+TERMINAL_STATES = TaskState.TERMINAL_STATES
 
 
 class IllegalTransition(Exception):

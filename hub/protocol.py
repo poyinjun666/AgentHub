@@ -65,7 +65,7 @@ def make_review_submit(
     """构造提交验收消息"""
     return AgentMessage(
         from_agent=from_agent,
-        to_agent="hub",
+        to_agent="qa",
         type=MsgType.REVIEW_SUBMIT,
         task_id=task_id,
         trace_id=trace_id,
@@ -87,7 +87,7 @@ def make_review_result(
 ) -> AgentMessage:
     """构造验收结果消息（中枢 → 提交方 agent）"""
     return AgentMessage(
-        from_agent="hub",
+        from_agent="qa",
         to_agent="*",        # 路由时替换为提交方
         type=MsgType.REVIEW_RESULT,
         task_id=task_id,

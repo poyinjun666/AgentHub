@@ -42,6 +42,7 @@ class LLMClient:
             "model":       provider["model"],
             "temperature": agent_cfg.get("temperature", 0.3),
             "max_tokens":  agent_cfg.get("max_tokens", 2000),
+            "timeout":     agent_cfg.get("timeout", 60),
         }
         self._cache[agent_id] = merged
         return merged
@@ -51,7 +52,7 @@ class LLMClient:
              max_tokens: Optional[int] = None,
              response_format_json: bool = False,
              retries: int = 2,
-             timeout: int = 60) -> str:
+             timeout: Optional[int] = None) -> str:
         """
         调用 LLM 返回文本。
         - response_format_json=True 时，自动解析 JSON 并返回 dict/str（解析失败返回原文）
@@ -71,6 +72,8 @@ class LLMClient:
         if response_format_json:
             # 多数 provider 支持 OpenAI 风格的 response_format
             body["response_format"] = {"type": "json_object"}
+
+        timeout = timeout if timeout is not None else cfg.get("timeout", 60)
 
         last_err = None
         for attempt in range(retries + 1):
